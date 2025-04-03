@@ -2,6 +2,7 @@
     <transition ref="tableContainer" name="slide-fade" appear>
         <div v-if="$route.name === 'DashboardHome'">
             <h1 class="mb-3">
+                <i class="fas fa-download download-icon" @click="downloadCSV" title="Download CSV"></i>
                 {{ $t("Quick Stats") }}
             </h1>
 
@@ -9,28 +10,19 @@
                 <div class="row">
                     <div class="col">
                         <h3>{{ $t("Up") }}</h3>
-                        <span
-                            class="num"
-                            :class="$root.stats.up === 0 && 'text-secondary'"
-                        >
+                        <span class="num" :class="$root.stats.up === 0 && 'text-secondary'">
                             {{ $root.stats.up }}
                         </span>
                     </div>
                     <div class="col">
                         <h3>{{ $t("Down") }}</h3>
-                        <span
-                            class="num"
-                            :class="$root.stats.down > 0 ? 'text-danger' : 'text-secondary'"
-                        >
+                        <span class="num" :class="$root.stats.down > 0 ? 'text-danger' : 'text-secondary'">
                             {{ $root.stats.down }}
                         </span>
                     </div>
                     <div class="col">
                         <h3>{{ $t("Maintenance") }}</h3>
-                        <span
-                            class="num"
-                            :class="$root.stats.maintenance > 0 ? 'text-maintenance' : 'text-secondary'"
-                        >
+                        <span class="num" :class="$root.stats.maintenance > 0 ? 'text-maintenance' : 'text-secondary'">
                             {{ $root.stats.maintenance }}
                         </span>
                     </div>
@@ -56,10 +48,16 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(beat, index) in displayedRecords" :key="index" :class="{ 'shadow-box': $root.windowWidth <= 550}">
-                            <td class="name-column"><router-link :to="`/dashboard/${beat.monitorID}`">{{ $root.monitorList[beat.monitorID]?.name }}</router-link></td>
-                            <td><Status :status="beat.status" /></td>
-                            <td :class="{ 'border-0':! beat.msg}"><Datetime :value="beat.time" /></td>
+                        <tr v-for="(beat, index) in displayedRecords" :key="index"
+                            :class="{ 'shadow-box': $root.windowWidth <= 550 }">
+                            <td class="name-column"><router-link :to="`/dashboard/${beat.monitorID}`">{{
+                                $root.monitorList[beat.monitorID]?.name }}</router-link></td>
+                            <td>
+                                <Status :status="beat.status" />
+                            </td>
+                            <td :class="{ 'border-0': !beat.msg }">
+                                <Datetime :value="beat.time" />
+                            </td>
                             <td class="border-0">{{ beat.msg }}</td>
                         </tr>
 
@@ -72,12 +70,8 @@
                 </table>
 
                 <div class="d-flex justify-content-center kuma_pagination">
-                    <pagination
-                        v-model="page"
-                        :records="importantHeartBeatListLength"
-                        :per-page="perPage"
-                        :options="paginationConfig"
-                    />
+                    <pagination v-model="page" :records="importantHeartBeatListLength" :per-page="perPage"
+                        :options="paginationConfig" />
                 </div>
             </div>
         </div>
@@ -128,6 +122,12 @@ export default {
     },
 
     mounted() {
+
+        console.log("Toast system available:", {
+            $rootToast: this.$root.toast,
+            $toast: this.$toast,
+            $root$toast: this.$root.$toast
+        });
         this.getImportantHeartbeatListLength();
 
         this.$root.emitter.on("newImportantHeartbeat", this.onNewImportantHeartbeat);
@@ -203,7 +203,72 @@ export default {
             }
 
         },
+        downloadCSV() {
+            try {
+                if (!this.displayedRecords || !Array.isArray(this.displayedRecords) || this.displayedRecords.length === 0) {
+                    console.error("No data available to export");
+                    this.showToast(this.$t("No data available to export"));
+                    return;
+                }
+
+                const headers = ["Name", "Status", "DateTime", "Message"];
+                let csv = headers.join(',') + '\n';
+
+                this.displayedRecords.forEach(beat => {
+                    if (!beat) return;
+
+                    const monitorName = this.$root.monitorList[beat.monitorID]?.name || '';
+
+                    // Convert status from 1/0 to UP/DOWN
+                    let status = '';
+                    if (beat.status === 1 || beat.status === '1') {
+                        status = 'UP';
+                    } else if (beat.status === 0 || beat.status === '0') {
+                        status = 'DOWN';
+                    } else {
+                        status = beat.status || '';
+                    }
+
+                    let dateTime = '';
+                    if (beat.time) {
+                        try {
+                            dateTime = this.$root.getDateTimeString?.(beat.time) ||
+                                new Date(beat.time).toLocaleString();
+                        } catch (e) {
+                            console.warn("Error formatting date:", e);
+                            dateTime = beat.time.toString();
+                        }
+                    }
+
+                    const message = beat.msg || '';
+
+                    const row = [
+                        `"${monitorName.toString().replace(/"/g, '""')}"`,
+                        `"${status.toString().replace(/"/g, '""')}"`,
+                        `"${dateTime.toString().replace(/"/g, '""')}"`,
+                        `"${message.toString().replace(/"/g, '""')}"`
+                    ];
+
+                    csv += row.join(',') + '\n';
+                });
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `status-report-${new Date().toISOString().slice(0, 10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+            } catch (error) {
+                console.error("Error generating CSV:", error);
+                this.showToast(this.$t("Failed to generate download"));
+            }
+        },
     },
+
 };
 </script>
 
@@ -243,6 +308,18 @@ table {
 @media screen and (min-aspect-ratio: 4/3) {
     .name-column {
         min-width: 200px;
+    }
+}
+
+.download-icon {
+    margin-right: 10px;
+    cursor: pointer;
+    color: $primary;
+    font-size: 0.8em;
+    vertical-align: middle;
+
+    &:hover {
+        opacity: 0.8;
     }
 }
 </style>
