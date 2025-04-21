@@ -56,5 +56,5 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          docker build -t ghcr.io/techlead-midland/midland-microfin-ltd/api-service:$ENV .
-          docker push ghcr.io/techlead-midland/midland-microfin-ltd/api-service:$ENV
+          docker build -t ghcr.io/techlead-midland/midland-microfin-ltd/uptime-kuma:custom .
+          docker push ghcr.io/techlead-midland/midland-microfin-ltd/uptime-kuma:custom
