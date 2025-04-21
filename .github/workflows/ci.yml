@@ -1,13 +1,32 @@
-name: Build and Push Docker Image
+name: Build Uptime Kuma
 
 on:
   push:
-    branches:
-      - staging
-      - dev
-      - master
+    tags:
+      - 'v*' # Trigger workflow only on tags starting with 'v' (e.g., v1.2.3)
+
 
 jobs:
+  build-nodejs-app:
+    runs-on: ubuntu-latest
+    env:
+      NODE_VERSION: 22.x
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Node Modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install Dependencies
+        run: npm install --verbose
+
+
   build-docker-image:
     runs-on: ubuntu-latest
     permissions:
@@ -22,10 +41,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-        
       - name: Print Docker Info
         run: docker info
-        
+
       - name: Print Node.js Version
         run: node -v
 
@@ -36,9 +54,7 @@ jobs:
           username: techlead-midland
           password: ${{ secrets.GHCR_PAT }}
 
-      
-          
       - name: Build and Push Docker Image
         run: |
-          docker build -t ghcr.io/techlead-midland/midland-microfin-ltd/uptime-kuma
-          docker push ghcr.io/techlead-midland/midland-microfin-ltd/uptime-kuma
+          docker build -t ghcr.io/techlead-midland/midland-microfin-ltd/api-service:$ENV .
+          docker push ghcr.io/techlead-midland/midland-microfin-ltd/api-service:$ENV
