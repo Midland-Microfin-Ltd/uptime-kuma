@@ -169,7 +169,7 @@ class Database {
     static readDBConfig() {
         let dbConfig;
 
-        let dbConfigString = fs.readFileSync(path.join(Database.dataDir, "db-config.json")).toString("utf-8");
+        let dbConfigString = fs.readFileSync( "./config/db-config.json").toString("utf-8");
         dbConfig = JSON.parse(dbConfigString);
 
         if (typeof dbConfig !== "object") {
