@@ -1,7 +1,7 @@
 {
     "type": "mariadb",
     "port": 3306,
-    "hostname": "10.186.2.221",
+    "hostname": "10.186.2.94",
     "username": "root",
     "password": "Uptime@Kuma@Dev#1221",
     "dbName": "test"
